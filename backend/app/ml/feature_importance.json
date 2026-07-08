@@ -1,0 +1,78 @@
+[
+  {
+    "feature": "historical_accident_count",
+    "importance": 0.789151709900949
+  },
+  {
+    "feature": "traffic_density",
+    "importance": 0.09778886679469537
+  },
+  {
+    "feature": "visibility_km",
+    "importance": 0.08470844932558877
+  },
+  {
+    "feature": "road_type_residential",
+    "importance": 0.0060746565220320395
+  },
+  {
+    "feature": "rain_mm",
+    "importance": 0.00490523345250414
+  },
+  {
+    "feature": "road_curvature",
+    "importance": 0.00423853872564017
+  },
+  {
+    "feature": "road_type_intersection",
+    "importance": 0.0029092517637801
+  },
+  {
+    "feature": "temperature_c",
+    "importance": 0.0025112906585106824
+  },
+  {
+    "feature": "road_width",
+    "importance": 0.002011047060647946
+  },
+  {
+    "feature": "hour",
+    "importance": 0.0015225174154621876
+  },
+  {
+    "feature": "month",
+    "importance": 0.0010534862332053953
+  },
+  {
+    "feature": "speed_limit",
+    "importance": 0.0009469033234246865
+  },
+  {
+    "feature": "day_of_week",
+    "importance": 0.0008626568086797723
+  },
+  {
+    "feature": "road_type_highway",
+    "importance": 0.0003768313798650538
+  },
+  {
+    "feature": "road_type_arterial",
+    "importance": 0.00035575831454683917
+  },
+  {
+    "feature": "nearby_school",
+    "importance": 0.0002879156116772209
+  },
+  {
+    "feature": "nearby_hospital",
+    "importance": 0.00011837819547486767
+  },
+  {
+    "feature": "is_weekend",
+    "importance": 9.97147857879244e-05
+  },
+  {
+    "feature": "fog",
+    "importance": 7.67937275279081e-05
+  }
+]

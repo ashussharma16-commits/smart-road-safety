@@ -1,0 +1,24 @@
+{
+  "numeric": [
+    "hour",
+    "day_of_week",
+    "month",
+    "rain_mm",
+    "visibility_km",
+    "temperature_c",
+    "traffic_density",
+    "speed_limit",
+    "road_curvature",
+    "road_width",
+    "historical_accident_count"
+  ],
+  "boolean": [
+    "is_weekend",
+    "fog",
+    "nearby_school",
+    "nearby_hospital"
+  ],
+  "categorical": [
+    "road_type"
+  ]
+}
