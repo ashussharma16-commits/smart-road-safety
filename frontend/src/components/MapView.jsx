@@ -32,7 +32,7 @@ function ClickCatcher({ onMapClick }) {
   return null;
 }
 
-export default function MapView({ hotspots, startPoint, endPoint, routeResult, pointCheck, pointResult, onMapClick }) {
+export default function MapView({ hotspots, startPoint, endPoint, routeResult, pointCheck, pointResult, onMapClick, theme = "dark" }) {
   const routeColors = ["#3ddc84", "#8b93a3"]; // recommended vs alternative baseline
 
   const polylines = useMemo(() => {
@@ -50,7 +50,11 @@ export default function MapView({ hotspots, startPoint, endPoint, routeResult, p
     <MapContainer center={DEFAULT_CENTER} zoom={11} className="leaflet-container">
       <TileLayer
         attribution='&copy; OpenStreetMap contributors, tiles &copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url={
+          theme === "light"
+            ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        }
       />
       <ClickCatcher onMapClick={onMapClick} />
 

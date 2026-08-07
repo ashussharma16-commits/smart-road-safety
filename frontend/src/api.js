@@ -11,6 +11,8 @@ export const api = {
   hotspots: (limit = 100) => client.get(`/api/hotspots?limit=${limit}`),
   hourlyRisk: () => client.get("/api/analytics/hourly-risk"),
   predict: (lat, lon) => client.post("/api/predict", { lat, lon }),
+  weather: (lat, lon) => client.get(`/api/weather?lat=${lat}&lon=${lon}`),
+  modelInfo: () => client.get("/api/model-info"),
   routeRisk: (start, end) =>
     client.post("/api/route-risk", {
       start_lat: start[0],

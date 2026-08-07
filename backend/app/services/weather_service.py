@@ -10,9 +10,16 @@ below - the return shape is what the rest of the app depends on, not this
 specific provider.
 """
 
+import logging
+import time
+
 import requests
 
+logger = logging.getLogger("roadsense.weather")
+
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+REQUEST_TIMEOUT = 8  # was 4 - too tight for a cold-started free-tier host
+RETRIES = 1
 
 # WMO weather codes (used by Open-Meteo) that mean fog / reduced visibility
 FOG_CODES = {45, 48}
@@ -32,43 +39,54 @@ def get_weather(lat: float, lon: float) -> dict:
     """Returns a dict matching the feature schema used by the ML model:
     temperature_c, rain_mm, visibility_km, fog, humidity, source.
     Falls back to sane defaults if the API is unreachable, so a flaky
-    hotel/venue wifi during the demo never breaks the app.
+    hotel/venue wifi during the demo never breaks the app. Retries once
+    and logs the real exception (check Render logs) instead of silently
+    swallowing it, so a persistent failure is diagnosable.
     """
-    try:
-        resp = requests.get(
-            OPEN_METEO_URL,
-            params={
-                "latitude": lat,
-                "longitude": lon,
-                "current": "temperature_2m,precipitation,relative_humidity_2m,weather_code",
-                "timezone": "auto",
-            },
-            timeout=4,
-        )
-        resp.raise_for_status()
-        current = resp.json()["current"]
+    last_error = None
+    for attempt in range(RETRIES + 1):
+        try:
+            resp = requests.get(
+                OPEN_METEO_URL,
+                params={
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "temperature_2m,precipitation,relative_humidity_2m,weather_code",
+                    "timezone": "auto",
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+            current = resp.json()["current"]
 
-        weather_code = current.get("weather_code", 0)
-        rain_mm = float(current.get("precipitation", 0.0) or 0.0)
-        fog = weather_code in FOG_CODES
-        is_rainy = weather_code in RAIN_CODES or rain_mm > 0
+            weather_code = current.get("weather_code", 0)
+            rain_mm = float(current.get("precipitation", 0.0) or 0.0)
+            fog = weather_code in FOG_CODES
+            is_rainy = weather_code in RAIN_CODES or rain_mm > 0
 
-        if fog:
-            visibility_km = 0.6
-        elif is_rainy and rain_mm > 5:
-            visibility_km = 3.0
-        elif is_rainy:
-            visibility_km = 5.0
-        else:
-            visibility_km = 9.0
+            if fog:
+                visibility_km = 0.6
+            elif is_rainy and rain_mm > 5:
+                visibility_km = 3.0
+            elif is_rainy:
+                visibility_km = 5.0
+            else:
+                visibility_km = 9.0
 
-        return {
-            "temperature_c": float(current.get("temperature_2m", 25.0)),
-            "rain_mm": rain_mm,
-            "visibility_km": visibility_km,
-            "fog": bool(fog),
-            "humidity": current.get("relative_humidity_2m", 50),
-            "source": "open-meteo",
-        }
-    except Exception:
-        return dict(DEFAULT_WEATHER)
+            return {
+                "temperature_c": float(current.get("temperature_2m", 25.0)),
+                "rain_mm": rain_mm,
+                "visibility_km": visibility_km,
+                "fog": bool(fog),
+                "humidity": current.get("relative_humidity_2m", 50),
+                "source": "open-meteo",
+            }
+        except Exception as e:
+            last_error = e
+            if attempt < RETRIES:
+                time.sleep(0.5)
+
+    logger.warning("Open-Meteo unreachable after retries, using fallback weather: %s", last_error)
+    fallback = dict(DEFAULT_WEATHER)
+    fallback["error"] = str(last_error)
+    return fallback

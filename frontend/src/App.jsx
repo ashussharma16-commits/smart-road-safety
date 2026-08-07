@@ -3,9 +3,22 @@ import MapView from "./components/MapView";
 import Dashboard from "./components/Dashboard";
 import RouteComparison from "./components/RouteComparison";
 import PointCheck from "./components/PointCheck";
+import WeatherWidget from "./components/WeatherWidget";
+import ModelInsights from "./components/ModelInsights";
 import { api } from "./api";
 
+const DELHI_CENTER = [28.6139, 77.209];
+
+function getInitialTheme() {
+  if (typeof window === "undefined") return "dark";
+  const saved = window.localStorage.getItem("roadsense-theme");
+  if (saved) return saved;
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
 export default function App() {
+  const [theme, setTheme] = useState(getInitialTheme);
+
   const [summary, setSummary] = useState(null);
   const [hourly, setHourly] = useState([]);
   const [hotspots, setHotspots] = useState([]);
@@ -20,6 +33,11 @@ export default function App() {
   const [pointResult, setPointResult] = useState(null);
   const [pointLoading, setPointLoading] = useState(false);
   const [pointError, setPointError] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    window.localStorage.setItem("roadsense-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     loadDashboardData();
@@ -90,6 +108,10 @@ export default function App() {
     );
   }
 
+  function toggleTheme() {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -101,12 +123,17 @@ export default function App() {
           <span className="legend-dot" style={{ "--dot": "#f5c518" }}>Moderate</span>
           <span className="legend-dot" style={{ "--dot": "#e5484d" }}>Danger</span>
         </div>
+        <WeatherWidget center={pointCheck || DELHI_CENTER} />
+        <button className="theme-toggle" onClick={toggleTheme} title="Toggle dark / light mode">
+          {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+        </button>
       </header>
 
       <div className="app-body">
         <aside className="sidebar">
           {loadError && <div className="error-banner">{loadError}</div>}
           <Dashboard summary={summary} hourly={hourly} hotspots={hotspots} />
+          <ModelInsights />
           <PointCheck
             pickingMode={pickingMode}
             setPickingMode={setPickingMode}
@@ -138,6 +165,7 @@ export default function App() {
             pointCheck={pointCheck}
             pointResult={pointResult}
             onMapClick={handleMapClick}
+            theme={theme}
           />
         </main>
       </div>

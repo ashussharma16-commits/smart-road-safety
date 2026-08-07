@@ -12,8 +12,10 @@ Then open http://localhost:8000/docs for interactive Swagger docs -- great
 for a live demo if the frontend has an issue on stage.
 """
 
+import json
 import os
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,6 +93,30 @@ def hourly_risk():
 @app.get("/api/weather")
 def weather(lat: float, lon: float):
     return weather_service.get_weather(lat, lon)
+
+
+ML_DIR = Path(__file__).parent / "ml"
+
+
+@app.get("/api/model-info")
+def model_info():
+    """Model transparency endpoint - trained metrics + top feature drivers.
+    Powers the 'Model Insights' panel; also handy to have loaded up for
+    judge Q&A ("how does the model actually decide risk?").
+    """
+    try:
+        metrics = json.loads((ML_DIR / "metrics.json").read_text())
+        importance = json.loads((ML_DIR / "feature_importance.json").read_text())
+        return {
+            "model_type": "RandomForestRegressor",
+            "r2_score": round(metrics.get("r2", 0), 4),
+            "mae": round(metrics.get("mae", 0), 2),
+            "n_train": metrics.get("n_train"),
+            "n_test": metrics.get("n_test"),
+            "top_features": importance[:6],
+        }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Model metrics not found - run training first.")
 
 
 @app.post("/api/route-risk")
