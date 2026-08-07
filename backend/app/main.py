@@ -12,6 +12,7 @@ Then open http://localhost:8000/docs for interactive Swagger docs -- great
 for a live demo if the frontend has an issue on stage.
 """
 
+import os
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
@@ -27,10 +28,19 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# ALLOWED_ORIGINS env var: comma-separated list of allowed frontend origins,
+# e.g. "https://your-app.vercel.app,http://localhost:5173". Defaults to "*"
+# for local dev / hackathon demo. NOTE: allow_credentials=True + origin "*"
+# is rejected by browsers per the CORS spec, so credentials are only enabled
+# once you set real origins.
+_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
+ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
+_wildcard = ALLOWED_ORIGINS == ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this before any real deployment
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=not _wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -40,6 +50,13 @@ app.add_middleware(
 def _warm_up():
     # loads the model + location lookup table once, instead of on first request
     get_model()
+
+
+@app.get("/")
+def root():
+    # lets Render/Railway health checks and a bare curl to the base URL
+    # return something other than a 404 during demo troubleshooting
+    return {"status": "ok", "service": "smart-road-safety-api", "docs": "/docs"}
 
 
 @app.get("/api/health")

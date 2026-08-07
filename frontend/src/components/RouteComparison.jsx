@@ -2,25 +2,37 @@ import React, { useState } from "react";
 import { api, riskColorHex } from "../api";
 import RiskGauge from "./RiskGauge";
 
+// Preset start/end pairs so the demo never depends on clicking the map
+// precisely on stage. Swap these for landmarks in your own city if you
+// changed BBOX in generate_data.py.
+const PRESET_ROUTES = [
+  { label: "Connaught Place → Airport", start: [28.6315, 77.2167], end: [28.5562, 77.1000] },
+  { label: "Dwarka → Noida", start: [28.5921, 77.0460], end: [28.5355, 77.3910] },
+  { label: "Rohini → Gurugram", start: [28.7041, 77.1025], end: [28.4595, 77.0266] },
+];
+
 export default function RouteComparison({
   pickingMode,
   setPickingMode,
   startPoint,
   endPoint,
+  setStartPoint,
+  setEndPoint,
   clearPoints,
   routeResult,
   setRouteResult,
+  useMyLocation,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const canCompare = startPoint && endPoint;
 
-  async function handleCompare() {
+  async function runCompare(start, end) {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.routeRisk(startPoint, endPoint);
+      const res = await api.routeRisk(start, end);
       setRouteResult(res.data);
     } catch (e) {
       setError(
@@ -32,17 +44,35 @@ export default function RouteComparison({
     }
   }
 
+  function handleCompare() {
+    return runCompare(startPoint, endPoint);
+  }
+
+  function usePreset(preset) {
+    setPickingMode(null);
+    setStartPoint(preset.start);
+    setEndPoint(preset.end);
+    runCompare(preset.start, preset.end);
+  }
+
   return (
     <div className="card">
       <h2>Route safety check</h2>
       <div className="route-form">
-        <button
-          className="ghost"
-          style={{ borderColor: pickingMode === "start" ? "#3ddc84" : undefined }}
-          onClick={() => setPickingMode("start")}
-        >
-          {startPoint ? "① Change start" : "① Click map to set start"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="ghost"
+            style={{ borderColor: pickingMode === "start" ? "#3ddc84" : undefined, flex: 1 }}
+            onClick={() => setPickingMode("start")}
+          >
+            {startPoint ? "① Change start" : "① Click map to set start"}
+          </button>
+          {useMyLocation && (
+            <button className="ghost" onClick={useMyLocation} title="Use my current location as start">
+              📍
+            </button>
+          )}
+        </div>
         <div className="point-picker">
           <span className="dot" style={{ background: "#3ddc84" }} />
           Start
@@ -77,6 +107,20 @@ export default function RouteComparison({
           Click "① Click map to set start", tap a spot on the map, then do the same for the
           destination — mirrors the Road A vs Road B example from the project brief.
         </p>
+
+        <div className="preset-routes">
+          {PRESET_ROUTES.map((p) => (
+            <button key={p.label} className="ghost preset" disabled={loading} onClick={() => usePreset(p)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {routeResult?.is_estimated && (
+          <div className="error-banner" style={{ color: "#ffe28a", borderColor: "var(--risk-3)", background: "rgba(245,197,24,0.1)" }}>
+            {routeResult.note}
+          </div>
+        )}
 
         {error && <div className="error-banner">{error}</div>}
       </div>

@@ -284,6 +284,17 @@ button.ghost:hover {
   line-height: 1.4;
 }
 
+.preset-routes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+button.preset {
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
 /* ---------- route result ---------- */
 .route-result {
   border: 1px solid var(--border);

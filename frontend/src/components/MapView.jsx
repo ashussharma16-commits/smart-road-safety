@@ -32,7 +32,7 @@ function ClickCatcher({ onMapClick }) {
   return null;
 }
 
-export default function MapView({ hotspots, startPoint, endPoint, routeResult, onMapClick }) {
+export default function MapView({ hotspots, startPoint, endPoint, routeResult, pointCheck, pointResult, onMapClick }) {
   const routeColors = ["#3ddc84", "#8b93a3"]; // recommended vs alternative baseline
 
   const polylines = useMemo(() => {
@@ -88,6 +88,29 @@ export default function MapView({ hotspots, startPoint, endPoint, routeResult, o
 
       {startPoint && <Marker position={startPoint} icon={pinIcon("#3ddc84")} />}
       {endPoint && <Marker position={endPoint} icon={pinIcon("#e5484d")} />}
+
+      {pointCheck && (
+        <CircleMarker
+          center={pointCheck}
+          radius={10}
+          pathOptions={{
+            color: pointResult ? riskColorHex(pointResult.risk_score) : "#ffc93c",
+            fillColor: pointResult ? riskColorHex(pointResult.risk_score) : "#ffc93c",
+            fillOpacity: 0.35,
+            weight: 2,
+          }}
+        >
+          {pointResult && (
+            <Popup>
+              <div className="map-popup">
+                <h3>Risk check</h3>
+                <div>Risk score: <b>{pointResult.risk_score}</b> / 100 ({pointResult.risk_level})</div>
+                <div>{pointResult.top_factors.join(", ")}</div>
+              </div>
+            </Popup>
+          )}
+        </CircleMarker>
+      )}
     </MapContainer>
   );
 }

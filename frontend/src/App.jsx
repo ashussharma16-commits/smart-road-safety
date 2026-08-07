@@ -2,23 +2,59 @@ import React, { useEffect, useState } from "react";
 import MapView from "./components/MapView";
 import Dashboard from "./components/Dashboard";
 import RouteComparison from "./components/RouteComparison";
+import PointCheck from "./components/PointCheck";
 import { api } from "./api";
 
 export default function App() {
   const [summary, setSummary] = useState(null);
   const [hourly, setHourly] = useState([]);
   const [hotspots, setHotspots] = useState([]);
+  const [loadError, setLoadError] = useState(null);
 
-  const [pickingMode, setPickingMode] = useState(null); // "start" | "end" | null
+  const [pickingMode, setPickingMode] = useState(null); // "start" | "end" | "predict" | null
   const [startPoint, setStartPoint] = useState(null);
   const [endPoint, setEndPoint] = useState(null);
   const [routeResult, setRouteResult] = useState(null);
 
+  const [pointCheck, setPointCheck] = useState(null); // {lat, lon}
+  const [pointResult, setPointResult] = useState(null);
+  const [pointLoading, setPointLoading] = useState(false);
+  const [pointError, setPointError] = useState(null);
+
   useEffect(() => {
-    api.summary().then((r) => setSummary(r.data)).catch(() => {});
-    api.hourlyRisk().then((r) => setHourly(r.data)).catch(() => {});
-    api.hotspots(150).then((r) => setHotspots(r.data)).catch(() => {});
+    loadDashboardData();
   }, []);
+
+  function loadDashboardData() {
+    setLoadError(null);
+    Promise.allSettled([api.summary(), api.hourlyRisk(), api.hotspots(150)]).then(
+      ([s, h, hs]) => {
+        if (s.status === "fulfilled") setSummary(s.value.data);
+        if (h.status === "fulfilled") setHourly(h.value.data);
+        if (hs.status === "fulfilled") setHotspots(hs.value.data);
+        if (s.status === "rejected" && h.status === "rejected" && hs.status === "rejected") {
+          setLoadError(
+            "Can't reach the backend. Check it's running and VITE_API_URL points to it."
+          );
+        }
+      }
+    );
+  }
+
+  async function checkPointRisk(latlng) {
+    setPointCheck(latlng);
+    setPointResult(null);
+    setPointError(null);
+    setPointLoading(true);
+    try {
+      const res = await api.predict(latlng[0], latlng[1]);
+      setPointResult(res.data);
+    } catch (e) {
+      setPointError(e.response?.data?.detail || "Couldn't score this point. Try again.");
+    } finally {
+      setPointLoading(false);
+    }
+  }
 
   function handleMapClick(latlng) {
     if (pickingMode === "start") {
@@ -27,6 +63,9 @@ export default function App() {
     } else if (pickingMode === "end") {
       setEndPoint(latlng);
       setPickingMode(null);
+    } else if (pickingMode === "predict") {
+      setPickingMode(null);
+      checkPointRisk(latlng);
     }
   }
 
@@ -35,6 +74,20 @@ export default function App() {
     setEndPoint(null);
     setRouteResult(null);
     setPickingMode(null);
+  }
+
+  function clearPointCheck() {
+    setPointCheck(null);
+    setPointResult(null);
+    setPointError(null);
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setStartPoint([pos.coords.latitude, pos.coords.longitude]),
+      () => {}
+    );
   }
 
   return (
@@ -52,15 +105,28 @@ export default function App() {
 
       <div className="app-body">
         <aside className="sidebar">
+          {loadError && <div className="error-banner">{loadError}</div>}
           <Dashboard summary={summary} hourly={hourly} hotspots={hotspots} />
+          <PointCheck
+            pickingMode={pickingMode}
+            setPickingMode={setPickingMode}
+            point={pointCheck}
+            result={pointResult}
+            loading={pointLoading}
+            error={pointError}
+            onClear={clearPointCheck}
+          />
           <RouteComparison
             pickingMode={pickingMode}
             setPickingMode={setPickingMode}
             startPoint={startPoint}
             endPoint={endPoint}
+            setStartPoint={setStartPoint}
+            setEndPoint={setEndPoint}
             clearPoints={clearPoints}
             routeResult={routeResult}
             setRouteResult={setRouteResult}
+            useMyLocation={useMyLocation}
           />
         </aside>
         <main className="map-area">
@@ -69,6 +135,8 @@ export default function App() {
             startPoint={startPoint}
             endPoint={endPoint}
             routeResult={routeResult}
+            pointCheck={pointCheck}
+            pointResult={pointResult}
             onMapClick={handleMapClick}
           />
         </main>
