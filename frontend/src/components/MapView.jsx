@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -6,6 +6,7 @@ import {
   Popup,
   Polyline,
   Marker,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -32,7 +33,15 @@ function ClickCatcher({ onMapClick }) {
   return null;
 }
 
-export default function MapView({ hotspots, startPoint, endPoint, routeResult, pointCheck, pointResult, onMapClick, theme = "dark" }) {
+function FlyToHandler({ target }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lon], target.zoom || 14, { duration: 1.1 });
+  }, [target, map]);
+  return null;
+}
+
+export default function MapView({ hotspots, startPoint, endPoint, routeResult, pointCheck, pointResult, onMapClick, theme = "dark", flyTarget }) {
   const routeColors = ["#3ddc84", "#8b93a3"]; // recommended vs alternative baseline
 
   const polylines = useMemo(() => {
@@ -57,6 +66,7 @@ export default function MapView({ hotspots, startPoint, endPoint, routeResult, p
         }
       />
       <ClickCatcher onMapClick={onMapClick} />
+      <FlyToHandler target={flyTarget} />
 
       {hotspots.map((h) => (
         <CircleMarker

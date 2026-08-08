@@ -70,7 +70,38 @@ def health():
 def predict(req: PredictRequest):
     model = get_model()
     try:
-        return model.predict(req.lat, req.lon, dt=req.timestamp or datetime.now())
+        dt = req.timestamp or datetime.now()
+        if req.simulate_hour is not None:
+            dt = dt.replace(hour=req.simulate_hour)
+
+        weather_override = None
+        has_weather_sim = req.simulate_rain_mm is not None or req.simulate_fog is not None
+        if has_weather_sim:
+            # start from real live weather, then override just the fields
+            # the user is simulating - so "simulate fog only" still uses
+            # the real temperature, etc.
+            weather_override = dict(weather_service.get_weather(req.lat, req.lon))
+            if req.simulate_rain_mm is not None:
+                weather_override["rain_mm"] = req.simulate_rain_mm
+                if req.simulate_rain_mm > 5:
+                    weather_override["visibility_km"] = 3.0
+                elif req.simulate_rain_mm > 0:
+                    weather_override["visibility_km"] = 5.0
+            if req.simulate_fog is not None:
+                weather_override["fog"] = req.simulate_fog
+                if req.simulate_fog:
+                    weather_override["visibility_km"] = 0.6
+            weather_override["source"] = "simulated"
+
+        traffic_override = req.simulate_traffic_density
+
+        result = model.predict(
+            req.lat, req.lon, dt=dt,
+            weather_override=weather_override,
+            traffic_override=traffic_override,
+        )
+        result["is_simulated"] = bool(has_weather_sim or traffic_override is not None or req.simulate_hour is not None)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -5,6 +5,8 @@ import RouteComparison from "./components/RouteComparison";
 import PointCheck from "./components/PointCheck";
 import WeatherWidget from "./components/WeatherWidget";
 import ModelInsights from "./components/ModelInsights";
+import LocationSearch from "./components/LocationSearch";
+import InfoModal from "./components/InfoModal";
 import { api } from "./api";
 
 const DELHI_CENTER = [28.6139, 77.209];
@@ -34,6 +36,9 @@ export default function App() {
   const [pointLoading, setPointLoading] = useState(false);
   const [pointError, setPointError] = useState(null);
 
+  const [flyTarget, setFlyTarget] = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     window.localStorage.setItem("roadsense-theme", theme);
@@ -59,13 +64,13 @@ export default function App() {
     );
   }
 
-  async function checkPointRisk(latlng) {
+  async function checkPointRisk(latlng, overrides = {}) {
     setPointCheck(latlng);
     setPointResult(null);
     setPointError(null);
     setPointLoading(true);
     try {
-      const res = await api.predict(latlng[0], latlng[1]);
+      const res = await api.predict(latlng[0], latlng[1], overrides);
       setPointResult(res.data);
     } catch (e) {
       setPointError(e.response?.data?.detail || "Couldn't score this point. Try again.");
@@ -85,6 +90,10 @@ export default function App() {
       setPickingMode(null);
       checkPointRisk(latlng);
     }
+  }
+
+  function runSimulation(overrides) {
+    if (pointCheck) checkPointRisk(pointCheck, overrides);
   }
 
   function clearPoints() {
@@ -112,6 +121,11 @@ export default function App() {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   }
 
+  function handleSearchSelect({ lat, lon }) {
+    setFlyTarget({ lat, lon, zoom: 15 });
+    checkPointRisk([lat, lon]);
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -124,10 +138,15 @@ export default function App() {
           <span className="legend-dot" style={{ "--dot": "#e5484d" }}>Danger</span>
         </div>
         <WeatherWidget center={pointCheck || DELHI_CENTER} />
+        <button className="theme-toggle" onClick={() => setShowInfo(true)} title="How this works">
+          ℹ️ How it works
+        </button>
         <button className="theme-toggle" onClick={toggleTheme} title="Toggle dark / light mode">
           {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
         </button>
       </header>
+
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
       <div className="app-body">
         <aside className="sidebar">
@@ -142,6 +161,7 @@ export default function App() {
             loading={pointLoading}
             error={pointError}
             onClear={clearPointCheck}
+            onSimulate={runSimulation}
           />
           <RouteComparison
             pickingMode={pickingMode}
@@ -157,6 +177,7 @@ export default function App() {
           />
         </aside>
         <main className="map-area">
+          <LocationSearch onSelect={handleSearchSelect} />
           <MapView
             hotspots={hotspots}
             startPoint={startPoint}
@@ -166,6 +187,7 @@ export default function App() {
             pointResult={pointResult}
             onMapClick={handleMapClick}
             theme={theme}
+            flyTarget={flyTarget}
           />
         </main>
       </div>

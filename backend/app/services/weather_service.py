@@ -18,8 +18,14 @@ import requests
 logger = logging.getLogger("roadsense.weather")
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-REQUEST_TIMEOUT = 8  # was 4 - too tight for a cold-started free-tier host
-RETRIES = 1
+REQUEST_TIMEOUT = 10  # was 4 then 8 - Render free-tier cold starts can be slow
+RETRIES = 2
+
+# Some hosts / WAFs quietly rate-limit or block the default "python-requests"
+# user agent from cloud IPs (Render, Railway, etc). Open-Meteo doesn't
+# require this, but identifying the client is good practice and cheap
+# insurance against being silently dropped.
+HEADERS = {"User-Agent": "RoadSense-Hackathon-Project/1.0 (student project, contact via GitHub)"}
 
 # WMO weather codes (used by Open-Meteo) that mean fog / reduced visibility
 FOG_CODES = {45, 48}
@@ -54,6 +60,7 @@ def get_weather(lat: float, lon: float) -> dict:
                     "current": "temperature_2m,precipitation,relative_humidity_2m,weather_code",
                     "timezone": "auto",
                 },
+                headers=HEADERS,
                 timeout=REQUEST_TIMEOUT,
             )
             resp.raise_for_status()

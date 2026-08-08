@@ -10,7 +10,7 @@ export const api = {
   summary: () => client.get("/api/summary"),
   hotspots: (limit = 100) => client.get(`/api/hotspots?limit=${limit}`),
   hourlyRisk: () => client.get("/api/analytics/hourly-risk"),
-  predict: (lat, lon) => client.post("/api/predict", { lat, lon }),
+  predict: (lat, lon, overrides = {}) => client.post("/api/predict", { lat, lon, ...overrides }),
   weather: (lat, lon) => client.get(`/api/weather?lat=${lat}&lon=${lon}`),
   modelInfo: () => client.get("/api/model-info"),
   routeRisk: (start, end) =>
